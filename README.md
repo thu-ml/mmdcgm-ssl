@@ -1,7 +1,7 @@
 # Max-margin Deep Conditional Generative Models for Semi-Supervised Learning
 ## [Chongxuan Li](https://github.com/zhenxuan00), Jun Zhu and Bo Zhang
 
-Full [paper](), a journal version of our NIPS15 paper (original [paper](https://arxiv.org/abs/1504.06787) and [code](https://github.com/zhenxuan00/mmdgm)). A novel class-condional variants of mmDGMs is proposed.
+Full [paper](https://arxiv.org/abs/1611.07119), a journal version of our NIPS15 paper (original [paper](https://arxiv.org/abs/1504.06787) and [code](https://github.com/zhenxuan00/mmdgm)). A novel class-condional variants of mmDGMs is proposed.
 
 ## Summary of Max-margin Deep Conditional Generative Models (mmDCGMs)
 
