@@ -34,9 +34,9 @@ Full [paper](https://arxiv.org/abs/1611.07119), a journal version of our NIPS15 
 
 ## Class conditional generation of raw images given a few labels
 
-### Results on MNIST given 100 labels (left: 100 labeled data sorted by class, right: samples)
+### Results on MNIST given 100 labels (left: 100 labeled data sorted by class, right: samples, where each row shares same class and each column shares same style.)
 <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-mnist-data.png" width="320">  <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-mnist-sample.png" width="320">
-where each row shares same class and each column shares same style.
+
 
 ### Results on SVHN given 1000 labels
 <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-svhn-data.png" width="320">  <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-svhn-sample.png" width="320">
