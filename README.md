@@ -5,10 +5,10 @@ Full [paper](https://arxiv.org/abs/1611.07119), a journal version of our NIPS15 
 
 ## Summary of Max-margin Deep Conditional Generative Models (mmDCGMs)
 
-- We boost the Effectiveness and Efficiency of SSL-VAEs in Semi-supervised Learning
-  - Employ advanced CNNs as the x2y, xy2z and zy2x networks
-  - Approximate the posterior inference of labels
-  - Propose powerful max-margin discriminative losses for labeled and unlabeled data
+- We boost the effectiveness and efficiency of DGMs in semi-supervised learning by
+  - Employing advanced CNNs as the x2y, xy2z and zy2x networks
+  - Approximating the posterior inference of labels
+  - Proposing powerful max-margin discriminative losses for labeled and unlabeled data
 - and the arrived mmDCGMs can
   - Perform efficient inference: constant time with respect to the number of classes
   - Achieve state-of-the-art classification results on sevarl benchmarks: MNIST, SVHN and NORB with 1000 labels and MNIST with full labels
@@ -36,6 +36,7 @@ Full [paper](https://arxiv.org/abs/1611.07119), a journal version of our NIPS15 
 
 ### Results on MNIST given 100 labels (left: 100 labeled data sorted by class, right: samples)
 <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-mnist-data.png" width="320">  <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-mnist-sample.png" width="320">
+where each row shares same class and each column shares same style.
 
 ### Results on SVHN given 1000 labels
 <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-svhn-data.png" width="320">  <img src="https://github.com/zhenxuan00/mmdcgm-ssl/blob/master/images/ssl-svhn-sample.png" width="320">
