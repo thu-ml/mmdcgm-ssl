@@ -8,6 +8,7 @@ import numpy as np
 import theano.tensor as T
 import theano
 import lasagne
+from theano.tensor.extra_ops import to_one_hot
 from parmesan.datasets import load_mnist_realval, load_mnist_binarized, load_frey_faces, load_norb_small
 from datasets import load_cifar10, load_svhn
 from datasets_norb import load_numpy_subclasses
@@ -48,6 +49,7 @@ parser.add_argument("-alpha_hinge", type=float, default=1.)
 parser.add_argument("-alpha_hat", type=float, default=.3)
 parser.add_argument("-alpha_reg", type=float, default=0)
 parser.add_argument("-alpha", type=float, default=.1)
+parser.add_argument("-alpha_straight_through", type=float, default=1e-4)
 parser.add_argument("-norm_type", type=int, default=2)
 parser.add_argument("-form", type=str, default='mean_class')
 # feature extractor
@@ -119,6 +121,7 @@ batch_size = args.batch_size
 num_labelled_per_batch = args.num_labelled_per_batch
 assert num_labelled % num_labelled_per_batch == 0
 delta = args.delta
+alpha_straight_through = args.alpha_straight_through
 alpha_decay = args.alpha_decay
 alpha_hinge = args.alpha_hinge
 alpha_reg = args.alpha_reg
@@ -168,7 +171,7 @@ every_anneal = args.every_anneal
 iw_samples = args.iw_samples
 eq_samples = args.eq_samples
 # log file
-logfile, res_out = build_log_file(args, filename_script)
+logfile, res_out = build_log_file(args, filename_script, extra=str(args.ssl_data_seed))
 shutil.copy(os.path.realpath(__file__), os.path.join(res_out, filename_script))
 
 '''
@@ -436,11 +439,11 @@ accurracy_eval = lasagne.objectives.categorical_accuracy(predictions_eval, sym_y
 # weight decays
 weight_decay_classifier = lasagne.regularization.regularize_layer_params_weighted({classifier:1}, lasagne.regularization.l2)
 
-
 '''
 learning
 '''
 # discriminative objective
+#classifier_cost_train = multiclass_hinge_loss(predictions=predictions_train[:num_labelled], targets=sym_y[:num_labelled], weight_decay=weight_decay_classifier, alpha_decay=alpha_decay)
 classifier_cost_train = multiclass_s3vm_loss(predictions=predictions_train, targets=sym_y, weight_decay=weight_decay_classifier, norm_type=norm_type, form=form, num_labelled=sym_batch_size_l, alpha_decay=alpha_decay, alpha_reg=alpha_reg, alpha_hat=alpha_hat, alpha_hinge=alpha_hinge, delta=delta)
 classifier_cost_eval = multiclass_hinge_loss(predictions=predictions_eval, targets=sym_y, weight_decay=weight_decay_classifier, alpha_decay=alpha_decay) # no hat loss for testing
 
@@ -450,17 +453,18 @@ cost_cla = classifier_cost_train
 predictions_train_hard = predictions_train.argmax(axis=1)
 predictions_eval_hard = predictions_eval.argmax(axis=1)
 
+sym_l_in_y_train = to_one_hot(T.concatenate([sym_y,predictions_train_hard[sym_batch_size_l:]], axis=0), num_classes)
 if distribution == 'bernoulli':
-    z_train, z_mu_train, z_log_var_train, x_mu_train = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu], {l_in_x:sym_x, l_in_y:T.concatenate([sym_y,predictions_train_hard[sym_batch_size_l:]], axis=0)}, deterministic=False)
-    z_eval, z_mu_eval, z_log_var_eval, x_mu_eval = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu], {l_in_x:sym_x, l_in_y:predictions_eval_hard}, deterministic=True)
+    z_train, z_mu_train, z_log_var_train, x_mu_train = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu], {l_in_x:sym_x, l_in_y:sym_l_in_y_train}, deterministic=False)
+    z_eval, z_mu_eval, z_log_var_eval, x_mu_eval = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu], {l_in_x:sym_x, l_in_y:to_one_hot(predictions_eval_hard, num_classes)}, deterministic=True)
 
     # lower bounds
     LL_train, log_qz_given_xy_train, log_pz_train, log_px_given_zy_train = latent_gaussian_x_bernoulli(z_train, z_mu_train, z_log_var_train, x_mu_train, sym_x, latent_size=nz, num_features=num_features, eq_samples=sym_eq_samples, iw_samples=sym_iw_samples)
     LL_eval, log_qz_given_xy_eval, log_pz_eval, log_px_given_zy_eval = latent_gaussian_x_bernoulli(z_eval, z_mu_eval, z_log_var_eval, x_mu_eval, sym_x, latent_size=nz, num_features=num_features, eq_samples=sym_eq_samples, iw_samples=sym_iw_samples)
 
 elif distribution == 'gaussian':
-    z_train, z_mu_train, z_log_var_train, x_mu_train, x_log_var_train = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu, l_dec_x_log_var], {l_in_x:sym_x, l_in_y:T.concatenate([sym_y,predictions_train_hard[sym_batch_size_l:]], axis=0)}, deterministic=False)
-    z_eval, z_mu_eval, z_log_var_eval, x_mu_eval, x_log_var_eval = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu, l_dec_x_log_var], {l_in_x:sym_x,l_in_y:predictions_eval_hard}, deterministic=True)
+    z_train, z_mu_train, z_log_var_train, x_mu_train, x_log_var_train = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu, l_dec_x_log_var], {l_in_x:sym_x, l_in_y:sym_l_in_y_train}, deterministic=False)
+    z_eval, z_mu_eval, z_log_var_eval, x_mu_eval, x_log_var_eval = lasagne.layers.get_output([l_z, l_mu, l_log_var, l_dec_x_mu, l_dec_x_log_var], {l_in_x:sym_x,l_in_y:to_one_hot(predictions_eval_hard, num_classes)}, deterministic=True)
 
     LL_train, log_qz_given_xy_train, log_pz_train, log_px_given_zy_train = latent_gaussian_x_gaussian(z_train, z_mu_train, z_log_var_train, x_mu_train, x_log_var_train, sym_x, latent_size=nz, num_features=num_features, eq_samples=sym_eq_samples, iw_samples=sym_iw_samples)
     LL_eval, log_qz_given_xy_eval, log_pz_eval, log_px_given_zy_eval = latent_gaussian_x_gaussian(z_eval, z_mu_eval, z_log_var_eval, x_mu_eval, x_log_var_eval, sym_x, latent_size=nz, num_features=num_features, eq_samples=sym_eq_samples, iw_samples=sym_iw_samples)
@@ -481,10 +485,26 @@ elif distribution == 'gaussian':
     params_count = lasagne.layers.count_params([classifier,l_dec_x_mu, l_dec_x_log_var], trainable=True)
 print 'Number of parameters:', params_count
 
-# functions
+# gradients
 grads = T.grad(cost, params)
+
+'''
+    Straight Through Estimator
+    forward pass: logits -> y=argmax -> f
+    backward pass: f/y * p/theta
+'''
+cla_params = lasagne.layers.get_all_params(classifier, trainable=True)
+grad_one_hot_y = T.grad(-LL_train, sym_l_in_y_train)
+cla_loss_gen = (grad_one_hot_y*lasagne.nonlinearities.softmax(predictions_train)).sum()
+cla_grads_gen = T.grad(cla_loss_gen,cla_params)
+
+for i in xrange(len(cla_grads_gen)):
+    grads[i] += alpha_straight_through*cla_grads_gen[i]
+
 # mgrads = lasagne.updates.total_norm_constraint(grads,max_norm=max_norm)
 # cgrads = [T.clip(g, -clip_grad, clip_grad) for g in mgrads]
+
+# functions
 updates = lasagne.updates.adam(grads, params, beta1=0.9, beta2=0.999, epsilon=1e-8, learning_rate=sym_lr)
 
 if preprocesses_dataset is not None:
@@ -502,10 +522,10 @@ sym_ran_y = T.ivector('ran_y')
 
 ran_z = T.tile(srng_ran.normal((num_classes,nz)), (num_classes, 1))
 if distribution == 'bernoulli':
-    random_x_mean = lasagne.layers.get_output(l_dec_x_mu, {l_z:ran_z, l_in_y:sym_ran_y}, deterministic=True)
+    random_x_mean = lasagne.layers.get_output(l_dec_x_mu, {l_z:ran_z, l_in_y:to_one_hot(sym_ran_y, num_classes)}, deterministic=True)
     random_x = srng_ran_share.binomial(n=1, p=random_x_mean, dtype=theano.config.floatX)
 elif distribution == 'gaussian':
-    random_x_mean, random_x_log_var = lasagne.layers.get_output([l_dec_x_mu, l_dec_x_log_var], {l_z:ran_z, l_in_y:sym_ran_y}, deterministic=True)
+    random_x_mean, random_x_log_var = lasagne.layers.get_output([l_dec_x_mu, l_dec_x_log_var], {l_z:ran_z, l_in_y:to_one_hot(sym_ran_y, num_classes)}, deterministic=True)
     random_x = srng_ran_share.normal(avg=random_x_mean, std=T.exp(0.5*random_x_log_var))
 generate = theano.function(inputs=[sym_ran_y], outputs=[random_x_mean, random_x])
 
@@ -588,7 +608,6 @@ for epoch in range(1, 1+num_epochs):
         log_px_given_z_test += [test_out[3]]
         loss_test += [test_out[4]]
         acc_test += [test_out[5]]
-
 
         line = "*Epoch=%d\tTime=%.2f\tLR=%.5f\n" %(epoch, t, lr) + \
                "  TRAIN:\tGen_loss=%.5f\tlogq(z|x)=%.5f\tlogp(z)=%.5f\tlogp(x|z)=%.5f\tdis_loss=%.5f\tlabel_error=%.5f\n" %(LL_train[-1], log_qz_given_x_train[-1], log_pz_train[-1], log_px_given_z_train[-1], loss_train[-1], 1-acc_labeled_train[-1]) + \

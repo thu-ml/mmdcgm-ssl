@@ -16,8 +16,9 @@ def _unpickle(f):
     return d
 
 def _get_datafolder_path():
-    full_path = os.path.abspath('.')
-    path = full_path +'/data'
+    #full_path = os.path.abspath('.')
+    #path = full_path +'/data'
+    path = '/home/chongxuan/mfs/data'
     return path
 
 def _download_svhn(datasets_dir=_get_datafolder_path()+'/svhn/'):    

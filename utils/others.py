@@ -41,11 +41,14 @@ def get_nonlin_list(nonlin_list):
 def bernoullisample(x):
     return np.random.binomial(1,x,size=x.shape).astype(theano.config.floatX)
 
-def build_log_file(args, filename_script):
+def build_log_file(args, filename_script, extra=None):
     res_out = args.outfolder
     res_out += '_'
     res_out += args.name
     res_out += '_'
+    if extra is not None:
+        res_out += extra
+        res_out += '_' 
     res_out += str(int(time.time()))
     if not os.path.exists(res_out):
         os.makedirs(res_out)

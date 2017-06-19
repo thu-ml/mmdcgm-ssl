@@ -8,6 +8,33 @@ import lasagne
 
 from parmesan.distributions import log_stdnormal, log_normal2, log_bernoulli
 
+def margin_for_reinforce(predictions, num_labelled, delta=1):
+    num_cls = predictions.shape[1]
+    predictions=predictions[num_labelled:] # predictions U x nc
+    p_max = T.max(predictions, axis=1)
+    p_mean = T.mean(predictions, axis=1)
+    margin = (p_max - p_mean) / (num_cls - 1) * num_cls
+    return margin
+
+def margin_for_reinforce1(predictions, num_labelled, delta=1):
+    num_cls = predictions.shape[1]
+    predictions=predictions[num_labelled:] # predictions U x nc
+    p_max = T.max(predictions, axis=1)
+    p_mean = T.mean(predictions, axis=1)
+    margin = (p_max - p_mean) / (num_cls - 1) * num_cls
+    return margin
+
+def lowerbound_for_reinforce(z, z_mu, z_log_var, x_mu, x, num_features, num_labelled, num_classes, epsilon=1e-6):
+    x = x.reshape((-1,num_features))
+    x_mu = x_mu.reshape((-1,num_features))
+
+    log_qz_given_xy = log_normal2(z, z_mu, z_log_var).sum(axis=1)
+    log_pz = log_stdnormal(z).sum(axis=1)
+    log_py = T.log(1.0/num_classes)
+    log_px_given_zy = log_bernoulli(x, T.clip(x_mu, epsilon, 1 - epsilon)).sum(axis=1)
+    ll_xy = log_px_given_zy + log_pz + log_py - log_qz_given_xy
+    return ll_xy[num_labelled:]
+
 def multiclass_s3vm_loss(predictions, targets, num_labelled, weight_decay, norm_type=2, form ='mean_class', alpha_hinge=1., alpha_hat=1., alpha_reg=1., alpha_decay=1., delta=1., entropy_term=False):
     '''
     predictions: 

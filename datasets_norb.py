@@ -5,7 +5,7 @@ import gzip
 import cPickle
 
 # refer to kingma's code nips14-ssl: https://github.com/dpkingma/nips14-ssl 
-path = './data/small_norb/np/'
+path = '/home/chongxuan/mfs/data/small_norb/np/'
 
 def load_numpy_dat(size=48):
     with gzip.open(path+'train_dat_'+str(size)+'.pkl.gz', 'rb') as f:
